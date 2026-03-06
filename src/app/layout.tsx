@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Manrope, Playfair_Display } from "next/font/google";
 import "./globals.css";
-import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { SiteHeader } from "@/components/SiteHeader";
 
 const manrope = Manrope({
@@ -18,8 +17,7 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: "Boutique",
-  description:
-    "Pièces sélectionnées avec soin – Livraison rapide à Meknès & partout au Maroc",
+  description: "Pièces sélectionnées avec soin. Découvrez nos univers.",
 };
 
 export default function RootLayout({
@@ -30,7 +28,6 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${manrope.variable} ${playfair.variable}`}>
       <body className="min-h-screen font-sans antialiased bg-gradient-to-b from-sand to-white">
-        <AnnouncementBar />
         <SiteHeader />
         <main className="min-h-[calc(100vh-4rem)]">
           {children}
