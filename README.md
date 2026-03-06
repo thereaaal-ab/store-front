@@ -192,6 +192,23 @@ Ouvrir [http://localhost:3000](http://localhost:3000).
 
 4. **Optionnel** : Si le dépôt racine n’est pas la racine du projet Vercel, définir dans Vercel le **Root Directory** sur `storefront` (redondant si `vercel.json` est à la racine avec `rootDirectory`).
 
+## Dépannage : les produits n’apparaissent pas (Railway / Vercel)
+
+1. **Vérifier `is_published`**  
+   Le storefront n’affiche que les produits avec `is_published = true`. Dans le back-office, publier les produits (case à cocher ou champ équivalent). Dans Supabase (Table Editor → `products`), vérifier que la colonne `is_published` est à `true` pour les produits à afficher.
+
+2. **Variables d’environnement sur Railway**  
+   Le storefront a besoin de **3 variables** (même projet Supabase que le back-office) :
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`  
+   Les préfixes et noms doivent être **exacts**. Après avoir ajouté ou modifié des variables, **redéployer** le service storefront (les `NEXT_PUBLIC_*` sont figées au moment du build).
+
+3. **Endpoint de diagnostic**  
+   Après déploiement, ouvrir :  
+   `https://<votre-storefront>.up.railway.app/api/debug-storefront`  
+   La réponse indique si les variables sont chargées et les comptes `products.total` / `products.published`. Si `published` est 0 alors que des produits sont publiés en base, revoir `is_published`. Si `env.hasSupabaseUrl` ou `env.hasServiceRoleKey` est `false`, revoir les variables et redéployer.
+
 ## Tester le flow
 
 1. **Back-office** : créer des catégories et des produits, cocher **is_published** pour certains produits (si le back-office expose ce champ ; sinon mettre `is_published = true` en SQL sur un produit de test).  
