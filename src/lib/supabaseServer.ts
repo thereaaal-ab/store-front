@@ -1,22 +1,33 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Server-only Supabase client using the service_role key.
- * Use ONLY in Server Actions / API routes / server code – never expose to the client.
- *
- * Env: SUPABASE_SERVICE_ROLE_KEY (set in .env, not NEXT_PUBLIC_)
+ * Public reader — uses the anon key.
+ * Safe for reading published products, categories, variants.
+ * Works as long as Supabase RLS allows public SELECT (or RLS is disabled).
  */
-function getSupabaseServer() {
+let _reader: SupabaseClient | null = null;
+
+export function getSupabaseReader(): SupabaseClient | null {
+  if (_reader) return _reader;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceRoleKey) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY (server env)"
-    );
-  }
-  return createClient(url, serviceRoleKey, {
-    auth: { persistSession: false },
-  });
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return null;
+  _reader = createClient(url, anonKey, { auth: { persistSession: false } });
+  return _reader;
 }
 
-export const supabaseServer = getSupabaseServer();
+/**
+ * Admin client — uses the service_role key.
+ * Use ONLY for writes (createOrder, stock updates) that need to bypass RLS.
+ * Never expose to the browser.
+ */
+let _admin: SupabaseClient | null = null;
+
+export function getSupabaseServer(): SupabaseClient | null {
+  if (_admin) return _admin;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return null;
+  _admin = createClient(url, serviceRoleKey, { auth: { persistSession: false } });
+  return _admin;
+}

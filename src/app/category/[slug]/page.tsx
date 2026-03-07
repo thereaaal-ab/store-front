@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { getSupabaseReader } from "@/lib/supabaseServer";
 import { ProductCard } from "@/components/ProductCard";
 import type { ProductForCard } from "@/types/product";
 
@@ -9,10 +9,8 @@ type Props = { params: Promise<{ slug: string }> };
 
 export default async function CategoryPage({ params }: Props) {
   const { slug } = await params;
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    notFound();
-  }
-  const supabase = supabaseServer;
+  const supabase = getSupabaseReader();
+  if (!supabase) notFound();
 
   const { data: category } = await supabase
     .from("product_categories")

@@ -1,4 +1,4 @@
-import { supabaseServer } from "@/lib/supabaseServer";
+import { getSupabaseReader } from "@/lib/supabaseServer";
 import { Hero } from "@/components/Hero";
 import { GenderCard } from "@/components/GenderCard";
 import { MAIN_CATEGORIES, DEFAULT_CATEGORY_IMAGES } from "@/constants";
@@ -6,24 +6,21 @@ import { MAIN_CATEGORIES, DEFAULT_CATEGORY_IMAGES } from "@/constants";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY
-  ) {
+  const supabase = getSupabaseReader();
+  if (!supabase) {
     return (
-      <div className="space-y-6 py-12">
+      <div className="space-y-6 py-12 px-4">
         <h1 className="font-display text-2xl font-medium text-gray-900">
           Accueil
         </h1>
         <p className="text-gray-600">
-          Configurez NEXT_PUBLIC_SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY dans
-          .env.local
+          Configurez <code className="rounded bg-gray-200 px-1">NEXT_PUBLIC_SUPABASE_URL</code> et{" "}
+          <code className="rounded bg-gray-200 px-1">SUPABASE_SERVICE_ROLE_KEY</code> dans{" "}
+          <code className="rounded bg-gray-200 px-1">.env.local</code> pour afficher les produits.
         </p>
       </div>
     );
   }
-
-  const supabase = supabaseServer;
   const { data: products } = await supabase
     .from("products")
     .select("id, main_category, image_url")

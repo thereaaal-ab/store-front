@@ -1,42 +1,134 @@
 "use client";
 
 import Link from "next/link";
+import { ShoppingBag, ArrowLeft, ArrowRight } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
-import { Button } from "@/components/ui/button";
 import { CartItem } from "@/components/CartItem";
 
 export default function CartPage() {
   const items = useCartStore((s) => s.items);
   const getTotal = useCartStore((s) => s.getTotal);
   const total = getTotal();
+  const itemCount = items.reduce((s, i) => s + i.quantity, 0);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
-      <h1 className="text-2xl font-bold text-foreground">Panier</h1>
-      {items.length === 0 ? (
-        <p className="text-muted-foreground">
-          Votre panier est vide.{" "}
-          <Link href="/" className="text-terracotta underline">
-            Voir les catégories
-          </Link>
-        </p>
-      ) : (
-        <>
-          <div className="space-y-4">
-            {items.map((item, index) => (
-              <CartItem key={`${item.productId}-${item.variantId ?? "n"}-${index}`} item={item} />
-            ))}
+    <div className="min-h-screen bg-gradient-to-b from-sand to-white">
+      {/* Page banner */}
+      <div className="border-b border-gray-100 bg-sand px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl">
+          <nav className="mb-4 flex items-center gap-1.5 text-xs uppercase tracking-widest text-gray-400">
+            <Link href="/" className="transition-colors hover:text-gray-700">Accueil</Link>
+            <span aria-hidden>›</span>
+            <span className="text-gray-700">Panier</span>
+          </nav>
+          <div className="flex items-end gap-4">
+            <h1 className="font-display text-3xl font-medium tracking-tight text-gray-900 sm:text-4xl">
+              Panier
+            </h1>
+            {itemCount > 0 && (
+              <span className="mb-1 text-sm text-gray-400">
+                {itemCount} article{itemCount > 1 ? "s" : ""}
+              </span>
+            )}
           </div>
-          <div className="flex flex-col items-end gap-4 border-t border-border pt-6">
-            <p className="text-xl font-bold">
-              Total : <span className="text-terracotta">{total.toFixed(2)} €</span>
+          <div className="mt-4 h-px w-12 bg-gold/60" aria-hidden />
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
+        {items.length === 0 ? (
+          /* Empty state */
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <ShoppingBag className="mb-6 h-12 w-12 text-gray-200" strokeWidth={1} />
+            <h2 className="font-display text-2xl font-medium text-gray-700">
+              Votre panier est vide
+            </h2>
+            <p className="mt-3 text-sm text-gray-400">
+              Découvrez nos collections et ajoutez des pièces à votre sélection.
             </p>
-            <Button asChild className="bg-terracotta hover:bg-terracotta/90">
-              <Link href="/checkout">Passer commande</Link>
-            </Button>
+            <div className="mt-4 h-px w-10 bg-gold/40" aria-hidden />
+            <Link
+              href="/#shop"
+              className="mt-8 flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-terracotta transition-opacity hover:opacity-70"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Voir les collections
+            </Link>
           </div>
-        </>
-      )}
+        ) : (
+          <div className="flex flex-col gap-10 lg:flex-row lg:gap-16">
+            {/* Items list */}
+            <div className="min-w-0 flex-1">
+              <div>
+                {items.map((item, index) => (
+                  <CartItem
+                    key={`${item.productId}-${item.variantId ?? "n"}-${index}`}
+                    item={item}
+                  />
+                ))}
+              </div>
+
+              <Link
+                href="/#shop"
+                className="mt-8 inline-flex items-center gap-2 text-xs uppercase tracking-widest text-gray-400 transition-colors hover:text-gray-700"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Continuer mes achats
+              </Link>
+            </div>
+
+            {/* Order summary panel */}
+            <aside className="w-full lg:w-80 lg:shrink-0">
+              <div className="sticky top-24 border border-gray-100 bg-white p-8">
+                <h2 className="font-display text-lg font-medium text-gray-900">
+                  Récapitulatif
+                </h2>
+                <div className="mt-6 space-y-3">
+                  {items.map((item, i) => (
+                    <div
+                      key={`${item.productId}-${item.variantId ?? "n"}-${i}`}
+                      className="flex justify-between gap-2 text-sm text-gray-600"
+                    >
+                      <span className="truncate">
+                        {item.name}
+                        {item.size ? ` · ${item.size}` : ""}
+                        <span className="text-gray-400"> ×{item.quantity}</span>
+                      </span>
+                      <span className="shrink-0 font-medium text-gray-900">
+                        {(item.priceAtTime * item.quantity).toFixed(2)} €
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="my-6 h-px bg-gray-100" aria-hidden />
+
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs uppercase tracking-widest text-gray-500">Total</span>
+                  <span className="font-display text-2xl font-medium text-gray-900">
+                    {total.toFixed(2)} €
+                  </span>
+                </div>
+
+                <p className="mt-2 text-xs text-gray-400">
+                  Livraison et paiement confirmés en boutique ou via WhatsApp.
+                </p>
+
+                <div className="mt-4 h-px w-8 bg-gold/40" aria-hidden />
+
+                <Link
+                  href="/checkout"
+                  className="mt-8 flex w-full items-center justify-center gap-2 bg-gray-900 px-6 py-3.5 text-xs font-medium uppercase tracking-widest text-white transition-colors hover:bg-terracotta"
+                >
+                  Passer commande
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </aside>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

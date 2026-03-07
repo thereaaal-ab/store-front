@@ -1,6 +1,6 @@
 "use server";
 
-import { supabaseServer } from "@/lib/supabaseServer";
+import { getSupabaseReader } from "@/lib/supabaseServer";
 
 type CartEntry = {
   productId: string;
@@ -27,7 +27,10 @@ export async function createOrder(input: Input): Promise<Result> {
     return { success: false, error: "Prénom et panier requis." };
   }
 
-  const sb = supabaseServer;
+  const sb = getSupabaseReader();
+  if (!sb) {
+    return { success: false, error: "Supabase non configuré. Ajoutez les variables d'environnement dans .env.local." };
+  }
   const totalAmount = cart.reduce((s, i) => s + i.quantity * i.priceAtTime, 0);
 
   if (paidAmount < 0 || paidAmount > totalAmount) {

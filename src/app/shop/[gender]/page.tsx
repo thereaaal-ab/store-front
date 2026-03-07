@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { getSupabaseReader } from "@/lib/supabaseServer";
 import { ShopPageContent } from "@/components/ShopPageContent";
 import type { ProductForCard } from "@/types/product";
 import { MAIN_CATEGORIES } from "@/constants";
@@ -15,14 +15,8 @@ export default async function ShopGenderPage({ params }: Props) {
   if (!VALID_GENDERS.has(gender as "homme" | "femme" | "enfant")) {
     notFound();
   }
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY
-  ) {
-    notFound();
-  }
-
-  const supabase = supabaseServer;
+  const supabase = getSupabaseReader();
+  if (!supabase) notFound();
   const { data: products } = await supabase
     .from("products")
     .select("id, name, category, color, image_url, default_price")
