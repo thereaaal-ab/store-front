@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { getProductImageUrl } from "@/lib/imageUrl";
 import { ArrowRight } from "lucide-react";
 import type { MainCategorySlug } from "@/constants";
 
@@ -22,7 +23,8 @@ export function GenderCard({
 }: GenderCardProps) {
   const href = `/shop/${slug}`;
   const [imageError, setImageError] = useState(false);
-  const hasImage = Boolean(imageUrl) && !imageError;
+  const imageSrc = getProductImageUrl(imageUrl ?? null);
+  const hasImage = Boolean(imageSrc) && !imageError;
 
   return (
     <Link
@@ -37,7 +39,7 @@ export function GenderCard({
       {hasImage ? (
         <>
           <Image
-            src={imageUrl!}
+            src={imageSrc!}
             alt=""
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-105"

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { getProductImageUrl } from "@/lib/imageUrl";
 import { Package } from "lucide-react";
 
 export type CategoryCardProps = {
@@ -20,7 +21,8 @@ export function CategoryCard({
   imageUrl,
 }: CategoryCardProps) {
   const href = `/category/${slug}`;
-  const hasImage = Boolean(imageUrl);
+  const imageSrc = getProductImageUrl(imageUrl ?? null);
+  const hasImage = Boolean(imageSrc);
 
   return (
     <Link
@@ -38,7 +40,7 @@ export function CategoryCard({
         {hasImage ? (
           <>
             <Image
-              src={imageUrl!}
+              src={imageSrc!}
               alt=""
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
