@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getProductImageUrl } from "@/lib/imageUrl";
+import { getProductImageUrl, isExternalImageUrl } from "@/lib/imageUrl";
 import type { ProductForCard } from "@/types/product";
 
 const AddToCartDialog = dynamic(
@@ -46,6 +46,7 @@ export function ProductCard({ product }: ProductCardProps) {
                 hovered && "scale-105"
               )}
               sizes="(max-width: 640px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              unoptimized={isExternalImageUrl(imageSrc)}
             />
           ) : (
             <div className="flex h-full items-center justify-center">

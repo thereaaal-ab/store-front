@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { getProductImageUrl } from "@/lib/imageUrl";
+import { getProductImageUrl, isExternalImageUrl } from "@/lib/imageUrl";
 import { Package } from "lucide-react";
 
 export type CategoryCardProps = {
@@ -45,6 +45,7 @@ export function CategoryCard({
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              unoptimized={isExternalImageUrl(imageSrc)}
             />
             <div
               className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-gray-900/20 to-transparent"

@@ -36,3 +36,8 @@ export function getProductImageUrl(imageUrl: string | null | undefined): string 
   if (url.startsWith("/")) return url;
   return url;
 }
+
+/** Use with next/image: pass unoptimized when true so external backoffice images load without optimizer (avoids "isn't a valid image" when backend returns 404 or non-image). */
+export function isExternalImageUrl(src: string | null | undefined): boolean {
+  return Boolean(src?.startsWith("http://") || src?.startsWith("https://"));
+}

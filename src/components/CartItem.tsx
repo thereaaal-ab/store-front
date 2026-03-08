@@ -4,7 +4,7 @@ import Image from "next/image";
 import { Minus, Plus, X } from "lucide-react";
 import type { CartItem as CartItemType } from "@/store/cartStore";
 import { useCartStore } from "@/store/cartStore";
-import { getProductImageUrl } from "@/lib/imageUrl";
+import { getProductImageUrl, isExternalImageUrl } from "@/lib/imageUrl";
 
 type CartItemProps = {
   item: CartItemType;
@@ -21,7 +21,13 @@ export function CartItem({ item }: CartItemProps) {
       {/* Image */}
       <div className="relative h-28 w-20 shrink-0 overflow-hidden bg-[#f4f1ed]">
         {imageSrc ? (
-          <Image src={imageSrc} alt={item.name} fill className="object-cover" />
+          <Image
+            src={imageSrc}
+            alt={item.name}
+            fill
+            className="object-cover"
+            unoptimized={isExternalImageUrl(imageSrc)}
+          />
         ) : (
           <div className="flex h-full items-center justify-center">
             <span className="font-display text-xs italic text-gray-300">—</span>

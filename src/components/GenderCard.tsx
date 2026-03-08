@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { getProductImageUrl } from "@/lib/imageUrl";
+import { getProductImageUrl, isExternalImageUrl } from "@/lib/imageUrl";
 import { ArrowRight } from "lucide-react";
 import type { MainCategorySlug } from "@/constants";
 
@@ -45,6 +45,7 @@ export function GenderCard({
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 768px) 100vw, 33vw"
             onError={() => setImageError(true)}
+            unoptimized={isExternalImageUrl(imageSrc)}
           />
           <div
             className="absolute inset-0 bg-gradient-to-t from-gray-900/85 via-gray-900/40 to-transparent"
