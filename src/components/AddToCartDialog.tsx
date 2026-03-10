@@ -125,8 +125,7 @@ export function AddToCartDialog({
           {hasVariants ? (
             <>
               <p className="text-sm text-gray-600">
-                Choisissez la quantité pour chaque taille disponible. Le stock
-                sera déduit à la validation de votre commande.
+                Choisissez la quantité pour chaque taille disponible.
               </p>
               {availableVariants.map((v) => (
                 <div
@@ -137,9 +136,6 @@ export function AddToCartDialog({
                     Taille {v.size}
                   </Label>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">
-                      Stock : {v.quantity}
-                    </span>
                     <Input
                       id={`qty-${v.id}`}
                       type="number"
@@ -162,7 +158,7 @@ export function AddToCartDialog({
           ) : (
             <>
               <p className="text-sm text-gray-600">
-                Quantité (stock : {product.totalStock})
+                Quantité
               </p>
               <div className="flex items-center gap-2">
                 <Label htmlFor="qty-no-variant" className="font-medium text-gray-900">
