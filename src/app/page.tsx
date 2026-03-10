@@ -1,7 +1,8 @@
 import { getSupabaseReader } from "@/lib/supabaseServer";
+import { getMainCategories } from "@/lib/mainCategories";
 import { Hero } from "@/components/Hero";
 import { GenderCard } from "@/components/GenderCard";
-import { MAIN_CATEGORIES, DEFAULT_CATEGORY_IMAGES } from "@/constants";
+import { DEFAULT_CATEGORY_IMAGES } from "@/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +22,10 @@ export default async function HomePage() {
       </div>
     );
   }
-  const { data: products } = await supabase
-    .from("products")
-    .select("id, main_category, image_url")
-    .eq("is_published", true);
+  const [mainCategories, { data: products }] = await Promise.all([
+    getMainCategories(),
+    supabase.from("products").select("id, main_category, image_url").eq("is_published", true),
+  ]);
 
   const countByMain: Record<string, number> = {};
   products?.forEach((p) => {
@@ -52,7 +53,7 @@ export default async function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {MAIN_CATEGORIES.map(({ slug, label }, i) => (
+            {mainCategories.map(({ slug, label, imageUrl }, i) => (
               <div
                 key={slug}
                 className="animate-fade-in-up opacity-0"
@@ -65,7 +66,7 @@ export default async function HomePage() {
                   slug={slug}
                   label={label}
                   productCount={countByMain[slug] ?? 0}
-                  imageUrl={DEFAULT_CATEGORY_IMAGES[slug]}
+                  imageUrl={imageUrl ?? DEFAULT_CATEGORY_IMAGES[slug as keyof typeof DEFAULT_CATEGORY_IMAGES] ?? "/category-homme.jpg"}
                 />
               </div>
             ))}

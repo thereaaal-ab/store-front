@@ -1,18 +1,18 @@
 import { notFound } from "next/navigation";
 import { getSupabaseReader } from "@/lib/supabaseServer";
+import { getMainCategories } from "@/lib/mainCategories";
 import { ShopPageContent } from "@/components/ShopPageContent";
 import type { ProductForCard } from "@/types/product";
-import { MAIN_CATEGORIES } from "@/constants";
 
 export const dynamic = "force-dynamic";
-
-const VALID_GENDERS = new Set(MAIN_CATEGORIES.map((c) => c.slug));
 
 type Props = { params: Promise<{ gender: string }> };
 
 export default async function ShopGenderPage({ params }: Props) {
   const { gender } = await params;
-  if (!VALID_GENDERS.has(gender as "homme" | "femme" | "enfant")) {
+  const mainCategories = await getMainCategories();
+  const validGenders = new Set(mainCategories.map((c) => c.slug));
+  if (!validGenders.has(gender)) {
     notFound();
   }
   const supabase = getSupabaseReader();
@@ -65,7 +65,7 @@ export default async function ShopGenderPage({ params }: Props) {
   }));
 
   const genderLabel =
-    MAIN_CATEGORIES.find((c) => c.slug === gender)?.label ?? gender;
+    mainCategories.find((c) => c.slug === gender)?.label ?? gender;
 
   return (
     <ShopPageContent

@@ -6,10 +6,8 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { getProductImageUrl, isExternalImageUrl } from "@/lib/imageUrl";
 import { ArrowRight } from "lucide-react";
-import type { MainCategorySlug } from "@/constants";
-
 type GenderCardProps = {
-  slug: MainCategorySlug;
+  slug: string;
   label: string;
   productCount: number;
   imageUrl?: string | null;
