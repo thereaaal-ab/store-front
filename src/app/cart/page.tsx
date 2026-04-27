@@ -1,15 +1,51 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
-import { ShoppingBag, ArrowLeft, ArrowRight } from "lucide-react";
+import Image from "next/image";
+import { ShoppingBag, ArrowLeft, ArrowRight, Minus, Plus, X } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
-import { CartItem } from "@/components/CartItem";
+import { getProductImageUrl, isExternalImageUrl } from "@/lib/imageUrl";
 
 export default function CartPage() {
   const items = useCartStore((s) => s.items);
   const getTotal = useCartStore((s) => s.getTotal);
+  const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const removeItem = useCartStore((s) => s.removeItem);
   const total = getTotal();
   const itemCount = items.reduce((s, i) => s + i.quantity, 0);
+  const groupedItems = useMemo(() => {
+    const byProduct = new Map<
+      string,
+      {
+        productId: string;
+        name: string;
+        imageUrl?: string;
+        lines: typeof items;
+      }
+    >();
+    for (const item of items) {
+      const existing = byProduct.get(item.productId);
+      if (existing) {
+        existing.lines.push(item);
+      } else {
+        byProduct.set(item.productId, {
+          productId: item.productId,
+          name: item.name,
+          imageUrl: item.imageUrl,
+          lines: [item],
+        });
+      }
+    }
+    return Array.from(byProduct.values()).map((group) => {
+      const totalQty = group.lines.reduce((sum, line) => sum + line.quantity, 0);
+      const totalPrice = group.lines.reduce(
+        (sum, line) => sum + line.priceAtTime * line.quantity,
+        0
+      );
+      return { ...group, totalQty, totalPrice };
+    });
+  }, [items]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sand to-white">
@@ -61,12 +97,122 @@ export default function CartPage() {
             {/* Items list */}
             <div className="min-w-0 flex-1">
               <div>
-                {items.map((item, index) => (
-                  <CartItem
-                    key={`${item.productId}-${item.variantId ?? "n"}-${index}`}
-                    item={item}
-                  />
-                ))}
+                {groupedItems.map((group) => {
+                  const imageSrc = getProductImageUrl(group.imageUrl ?? null);
+                  return (
+                    <div
+                      key={group.productId}
+                      className="group border-b border-gray-100 py-6 last:border-0"
+                    >
+                      <div className="flex gap-5">
+                        <div className="relative h-28 w-20 shrink-0 overflow-hidden bg-[#f4f1ed]">
+                          {imageSrc ? (
+                            <Image
+                              src={imageSrc}
+                              alt={group.name}
+                              fill
+                              className="object-cover"
+                              unoptimized={isExternalImageUrl(imageSrc)}
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center">
+                              <span className="font-display text-xs italic text-gray-300">—</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-3 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate font-display text-sm font-medium leading-snug text-gray-900">
+                                {group.name}
+                              </p>
+                              <p className="mt-1 text-xs text-gray-400">
+                                {group.totalQty} pièce{group.totalQty > 1 ? "s" : ""} au total
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                group.lines.forEach((line) =>
+                                  removeItem(group.productId, line.variantId)
+                                )
+                              }
+                              className="shrink-0 p-1 text-gray-300 transition-colors hover:text-gray-700"
+                              aria-label={`Supprimer ${group.name}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          <div className="space-y-2.5">
+                            {group.lines.map((line) => (
+                              <div
+                                key={`${line.productId}-${line.variantId ?? "n"}`}
+                                className="flex items-center justify-between gap-3"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-xs uppercase tracking-widest text-gray-400">
+                                    {line.size ? `Taille ${line.size}` : "Quantité"}
+                                  </p>
+                                  <p className="mt-0.5 text-xs text-gray-400">
+                                    {line.priceAtTime.toFixed(2)} € / pièce
+                                  </p>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-0 border border-gray-200">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        updateQuantity(
+                                          line.productId,
+                                          line.variantId,
+                                          line.quantity - 1
+                                        )
+                                      }
+                                      className="flex h-7 w-7 items-center justify-center text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                                      aria-label="Diminuer la quantité"
+                                    >
+                                      <Minus className="h-3 w-3" />
+                                    </button>
+                                    <span className="flex h-7 w-8 items-center justify-center text-xs font-medium text-gray-900">
+                                      {line.quantity}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        updateQuantity(
+                                          line.productId,
+                                          line.variantId,
+                                          line.quantity + 1
+                                        )
+                                      }
+                                      className="flex h-7 w-7 items-center justify-center text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                                      aria-label="Augmenter la quantité"
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                    </button>
+                                  </div>
+
+                                  <p className="w-20 text-right text-sm font-medium text-gray-900">
+                                    {(line.priceAtTime * line.quantity).toFixed(2)} €
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="mt-4 flex items-center justify-end border-t border-gray-100 pt-3">
+                            <p className="text-sm font-medium text-gray-900">
+                              {group.totalPrice.toFixed(2)} €
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               <Link
@@ -85,19 +231,28 @@ export default function CartPage() {
                   Récapitulatif
                 </h2>
                 <div className="mt-6 space-y-3">
-                  {items.map((item, i) => (
+                  {groupedItems.map((group) => (
                     <div
-                      key={`${item.productId}-${item.variantId ?? "n"}-${i}`}
-                      className="flex justify-between gap-2 text-sm text-gray-600"
+                      key={group.productId}
+                      className="space-y-1.5 text-sm text-gray-600"
                     >
-                      <span className="truncate">
-                        {item.name}
-                        {item.size ? ` · ${item.size}` : ""}
-                        <span className="text-gray-400"> ×{item.quantity}</span>
+                      <span className="block truncate font-medium text-gray-900">
+                        {group.name}
                       </span>
-                      <span className="shrink-0 font-medium text-gray-900">
-                        {(item.priceAtTime * item.quantity).toFixed(2)} €
-                      </span>
+                      {group.lines.map((line) => (
+                        <div
+                          key={`${line.productId}-${line.variantId ?? "n"}-summary`}
+                          className="flex justify-between gap-2"
+                        >
+                          <span className="truncate">
+                            {line.size ? `${line.size}` : "Unique"}
+                            <span className="text-gray-400"> ×{line.quantity}</span>
+                          </span>
+                          <span className="shrink-0 font-medium text-gray-900">
+                            {(line.priceAtTime * line.quantity).toFixed(2)} €
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>

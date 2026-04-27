@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Minus, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useCartStore } from "@/store/cartStore";
 import type { ProductForCard } from "@/types/product";
 
@@ -43,75 +44,77 @@ export function AddToCartDialog({
   const price = Number(product.defaultPrice);
   const hasVariants = product.variants.length > 0;
 
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [qtyByVariantId, setQtyByVariantId] = useState<Record<string, number>>(
+    {}
+  );
+  const [noVariantQty, setNoVariantQty] = useState(1);
 
-  const resetQuantities = useCallback(() => {
-    if (hasVariants) {
-      const initial: Record<string, number> = {};
-      product.variants.forEach((v) => {
-        initial[v.id] = 0;
-      });
-      setQuantities(initial);
-    } else {
-      setQuantities({ _noVariant: 1 });
-    }
-  }, [product.variants, hasVariants]);
+  const resetState = useCallback(() => {
+    setQtyByVariantId({});
+    setNoVariantQty(1);
+  }, []);
 
   useEffect(() => {
-    if (open) resetQuantities();
-  }, [open, resetQuantities]);
+    if (open) resetState();
+  }, [open, resetState]);
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
-      if (!next) resetQuantities();
+      if (!next) resetState();
       onOpenChange(next);
     },
-    [onOpenChange, resetQuantities]
+    [onOpenChange, resetState]
   );
 
-  const setVariantQty = (variantId: string, value: number) => {
-    const variant = product.variants.find((v) => v.id === variantId);
-    const max = variant ? Math.max(0, variant.quantity) : 0;
-    const clamped = Math.min(max, Math.max(0, value));
-    setQuantities((prev) => ({ ...prev, [variantId]: clamped }));
+  const availableVariants = useMemo(() => {
+    const withStock = product.variants.filter((v) => v.quantity > 0);
+    return sortVariants(withStock);
+  }, [product.variants]);
+
+  const setQtyForVariant = (
+    variantId: string,
+    raw: number,
+    maxStock: number
+  ) => {
+    const next = Math.min(maxStock, Math.max(0, raw));
+    setQtyByVariantId((prev) => ({ ...prev, [variantId]: next }));
   };
 
-  const bumpVariantQty = (variantId: string, delta: number) => {
-    const variant = product.variants.find((v) => v.id === variantId);
-    if (!variant || variant.quantity <= 0) return;
-    const current = quantities[variantId] ?? 0;
-    setVariantQty(variantId, current + delta);
+  const bumpVariant = (variantId: string, delta: number, maxStock: number) => {
+    const cur = qtyByVariantId[variantId] ?? 0;
+    setQtyForVariant(variantId, cur + delta, maxStock);
   };
 
-  const totalRequested = hasVariants
-    ? Object.entries(quantities).reduce((s, [, q]) => s + q, 0)
-    : quantities["_noVariant"] ?? 0;
+  const totalPiecesToAdd = useMemo(() => {
+    return availableVariants.reduce((sum, v) => {
+      return sum + (qtyByVariantId[v.id] ?? 0);
+    }, 0);
+  }, [availableVariants, qtyByVariantId]);
 
   const handleConfirm = () => {
     if (hasVariants) {
-      product.variants.forEach((v) => {
-        const qty = quantities[v.id] ?? 0;
-        if (qty > 0 && v.quantity >= qty) {
-          addItem({
-            productId: product.id,
-            variantId: v.id,
-            quantity: qty,
-            priceAtTime: price,
-            name: product.name,
-            imageUrl: product.imageUrl ?? undefined,
-            size: v.size,
-          });
-        }
-      });
+      let added = false;
+      for (const v of availableVariants) {
+        const q = qtyByVariantId[v.id] ?? 0;
+        if (q <= 0 || q > v.quantity) continue;
+        addItem({
+          productId: product.id,
+          variantId: v.id,
+          quantity: q,
+          priceAtTime: price,
+          name: product.name,
+          imageUrl: product.imageUrl ?? undefined,
+          size: v.size,
+        });
+        added = true;
+      }
+      if (!added) return;
     } else {
-      const qty = Math.max(
-        1,
-        Math.min(product.totalStock, quantities["_noVariant"] ?? 1)
-      );
+      const q = Math.max(1, Math.min(product.totalStock, noVariantQty));
       addItem({
         productId: product.id,
         variantId: undefined,
-        quantity: qty,
+        quantity: q,
         priceAtTime: price,
         name: product.name,
         imageUrl: product.imageUrl ?? undefined,
@@ -120,143 +123,205 @@ export function AddToCartDialog({
     handleOpenChange(false);
   };
 
-  const canConfirm =
-    totalRequested > 0 &&
-    (hasVariants
-      ? Object.entries(quantities).every(
-          ([id, q]) =>
-            q <= (product.variants.find((v) => v.id === id)?.quantity ?? 0)
-        )
-      : (quantities["_noVariant"] ?? 0) <= product.totalStock);
+  const canConfirmVariants =
+    availableVariants.length > 0 && totalPiecesToAdd >= 1;
 
-  const availableVariants = useMemo(() => {
-    const withStock = product.variants.filter((v) => v.quantity > 0);
-    return sortVariants(withStock);
-  }, [product.variants]);
+  const canConfirmNoVariant =
+    noVariantQty >= 1 && noVariantQty <= product.totalStock;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="flex max-h-[90vh] max-w-[calc(100vw-1.5rem)] flex-col gap-3 overflow-hidden bg-sand p-4 sm:max-w-md sm:p-6"
+        className={cn(
+          "gap-0 border-gray-200 bg-white p-6 shadow-xl sm:max-w-lg sm:p-8",
+          "max-h-[min(92vh,640px)] max-w-[calc(100vw-1.5rem)] overflow-y-auto"
+        )}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogHeader className="shrink-0 space-y-1 text-left">
-          <DialogTitle className="font-display text-gray-900">
+        <DialogHeader className="shrink-0 space-y-2 pb-6 text-left">
+          <DialogTitle className="font-display text-xl font-medium tracking-tight text-gray-900">
             Ajouter au panier
           </DialogTitle>
-          <DialogDescription>
-            {product.name} – {price.toFixed(2)} €
+          <DialogDescription className="text-base leading-relaxed text-gray-600">
+            <span className="font-medium text-gray-900">{product.name}</span>
+            <span className="text-gray-400"> · </span>
+            <span className="tabular-nums">{price.toFixed(2)} €</span>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex flex-1 flex-col gap-3 overflow-hidden">
+        <div className="pb-6">
           {hasVariants ? (
             <>
-              <p className="shrink-0 text-sm text-gray-600">
-                Choisissez les tailles et quantités.
-              </p>
-              <div className="min-h-0 flex flex-1 flex-col overflow-hidden rounded-lg border border-border/60 bg-white/40">
-                <div className="max-h-[min(52vh,16rem)] overflow-y-auto overscroll-contain px-3 py-3 sm:max-h-[min(48vh,18rem)]">
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {availableVariants.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  Aucune taille en stock.
+                </p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-4 gap-2 sm:gap-3">
                     {availableVariants.map((v) => {
-                      const qty = quantities[v.id] ?? 0;
+                      const maxStock = Math.max(0, v.quantity);
+                      const draft = qtyByVariantId[v.id] ?? 0;
+                      const selected = draft > 0;
+
                       return (
                         <div
                           key={v.id}
-                          className="flex flex-col gap-1.5 rounded-lg border border-border bg-white/80 p-2 shadow-sm"
+                          className={cn(
+                            "flex flex-col rounded-xl border p-3 transition-colors",
+                            "touch-manipulation",
+                            selected
+                              ? "border-gray-900 bg-gray-900/[0.06] shadow-sm"
+                              : "border-gray-200 bg-gray-50/40 hover:border-gray-300"
+                          )}
                         >
-                          <div className="text-center">
-                            <span className="text-sm font-semibold text-gray-900">
+                          {/* Size + stock badge — one visual group */}
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span className="text-lg font-semibold tabular-nums leading-none text-gray-900">
                               {v.size}
                             </span>
-                          </div>
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8 shrink-0 touch-manipulation"
-                              disabled={qty <= 0}
-                              aria-label={`Diminuer taille ${v.size}`}
-                              onClick={() => bumpVariantQty(v.id, -1)}
+                            <span
+                              className="inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-white px-1.5 text-[10px] font-medium tabular-nums text-gray-600 ring-1 ring-gray-200"
+                              title={`${maxStock} en stock`}
                             >
-                              <Minus className="h-3.5 w-3.5" />
-                            </Button>
-                            <span className="min-w-[1.25rem] text-center text-sm font-medium tabular-nums">
-                              {qty}
+                              {maxStock}
                             </span>
+                          </div>
+
+                          {/* Single inline quantity row — centered, grouped */}
+                          <div className="mt-3 flex w-full items-center justify-center gap-0">
                             <Button
                               type="button"
-                              variant="outline"
+                              variant="ghost"
                               size="icon"
-                              className="h-8 w-8 shrink-0 touch-manipulation"
-                              disabled={qty >= v.quantity}
-                              aria-label={`Augmenter taille ${v.size}`}
-                              onClick={() => bumpVariantQty(v.id, 1)}
+                              className="h-8 w-8 shrink-0 rounded-md text-gray-700 hover:bg-white/80"
+                              disabled={draft <= 0}
+                              aria-label={`Diminuer quantité taille ${v.size}`}
+                              onClick={() => bumpVariant(v.id, -1, maxStock)}
                             >
-                              <Plus className="h-3.5 w-3.5" />
+                              <Minus className="h-3.5 w-3.5" strokeWidth={2} />
+                            </Button>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={maxStock}
+                              value={draft === 0 ? "" : draft}
+                              onChange={(e) => {
+                                const n = parseInt(e.target.value, 10);
+                                if (Number.isNaN(n)) {
+                                  setQtyForVariant(v.id, 0, maxStock);
+                                } else {
+                                  setQtyForVariant(v.id, n, maxStock);
+                                }
+                              }}
+                              className={cn(
+                                "h-8 w-10 shrink-0 border-0 bg-transparent px-1 text-center text-sm font-semibold tabular-nums shadow-none",
+                                "focus-visible:ring-0 focus-visible:ring-offset-0"
+                              )}
+                              aria-label={`Quantité taille ${v.size}`}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 shrink-0 rounded-md text-gray-700 hover:bg-white/80"
+                              disabled={draft >= maxStock}
+                              aria-label={`Augmenter quantité taille ${v.size}`}
+                              onClick={() => bumpVariant(v.id, 1, maxStock)}
+                            >
+                              <Plus className="h-3.5 w-3.5" strokeWidth={2} />
                             </Button>
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                  {availableVariants.length === 0 && (
-                    <p className="py-6 text-center text-sm text-gray-500">
-                      Aucune taille en stock.
-                    </p>
-                  )}
-                </div>
-              </div>
+                  <p className="mt-4 text-center text-xs leading-relaxed text-gray-500">
+                    Choisissez une quantité par taille. Le badge indique le stock
+                    disponible. Les tailles sélectionnées sont mises en évidence.
+                  </p>
+                </>
+              )}
             </>
           ) : (
-            <div className="shrink-0 space-y-3">
-              <p className="text-sm text-gray-600">Quantité</p>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="qty-no-variant" className="font-medium text-gray-900">
-                  Quantité
-                </Label>
+            <div className="space-y-3">
+              <Label
+                htmlFor="qty-no-variant"
+                className="text-sm font-medium text-gray-900"
+              >
+                Quantité
+              </Label>
+              <div className="mx-auto flex max-w-[200px] items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-50/50 p-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  disabled={noVariantQty <= 1}
+                  onClick={() => setNoVariantQty((q) => Math.max(1, q - 1))}
+                  aria-label="Diminuer"
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
                 <Input
                   id="qty-no-variant"
                   type="number"
                   min={1}
                   max={product.totalStock}
-                  value={quantities["_noVariant"] ?? 1}
+                  value={noVariantQty}
                   onChange={(e) =>
-                    setQuantities((prev) => ({
-                      ...prev,
-                      _noVariant: Math.max(
-                        1,
-                        Math.min(
-                          product.totalStock,
-                          parseInt(e.target.value, 10) || 1
-                        )
-                      ),
-                    }))
+                    setNoVariantQty(
+                      Math.min(
+                        product.totalStock,
+                        Math.max(1, parseInt(e.target.value, 10) || 1)
+                      )
+                    )
                   }
-                  className="w-24 text-center"
-                  aria-label="Quantité"
+                  className="h-9 w-14 border-0 bg-transparent text-center text-base font-semibold shadow-none focus-visible:ring-0"
                 />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  disabled={noVariantQty >= product.totalStock}
+                  onClick={() =>
+                    setNoVariantQty((q) =>
+                      Math.min(product.totalStock, q + 1)
+                    )
+                  }
+                  aria-label="Augmenter"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           )}
         </div>
 
-        <DialogFooter className="shrink-0 gap-2 border-t border-border/40 pt-3 sm:border-t-0 sm:pt-0 sm:gap-0">
+        <DialogFooter className="shrink-0 gap-3 border-t border-gray-100 pt-6 sm:justify-end">
           <Button
             type="button"
             variant="outline"
+            className="border-gray-300 bg-white"
             onClick={() => handleOpenChange(false)}
           >
             Annuler
           </Button>
           <Button
             type="button"
-            className="bg-terracotta hover:bg-terracotta/90"
-            disabled={!canConfirm}
+            className="bg-terracotta px-6 font-medium hover:bg-terracotta/90"
+            disabled={
+              hasVariants ? !canConfirmVariants : !canConfirmNoVariant
+            }
             onClick={handleConfirm}
           >
-            Ajouter au panier {totalRequested > 0 ? `(${totalRequested})` : ""}
+            Ajouter au panier
+            {hasVariants && totalPiecesToAdd > 0
+              ? ` (${totalPiecesToAdd})`
+              : !hasVariants && noVariantQty > 0
+                ? ` (${noVariantQty})`
+                : ""}
           </Button>
         </DialogFooter>
       </DialogContent>
